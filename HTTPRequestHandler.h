@@ -19,7 +19,8 @@
 class Buffer;
 class Request;
 
-int processRequestLine(Buffer&, const boost::shared_ptr<Request>&);
+int ProcessRequestLine(Buffer&, const boost::shared_ptr<Request>&);
+void ProcessRequestHeaders(Buffer&, const boost::shared_ptr<Request>&);
 
 ssize_t httpReadRequestHeader(const Buffer&);
 

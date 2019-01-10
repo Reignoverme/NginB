@@ -18,14 +18,14 @@ public:
 
     ~Buffer(){ delete [] buf_; }
 
-    u_char* start() const  { return start_; }
-    u_char* end() const { return end_; }
-    u_char* last() const { return last_; }
-    u_char* pos() const { return pos_; }
+    u_char* Start() const  { return start_; }
+    u_char* End() const { return end_; }
+    u_char* Last() const { return last_; }
+    u_char* Pos() const { return pos_; }
 
-    void setPos(u_char* pos) { pos_ = pos; }
+    void SetPos(u_char* pos) { pos_ = pos; }
 
-    ssize_t readFd(int fd, size_t size);
+    ssize_t ReadFd(int fd, size_t size);
 
 private:
     u_char* buf_;

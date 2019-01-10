@@ -3,6 +3,7 @@
 #include <boost/core/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/weak_ptr.hpp>
+#include <map>
 #include <iostream>
 
 #define HTTP_UNKNOWN                   0x0001
@@ -26,26 +27,28 @@ class Buffer;
 class Request : boost::noncopyable
 {
 public:
+    typedef std::map<std::string, std::string> Header;
+
     Request(boost::shared_ptr<Connection> c)
         :connection_(c),
          state_(0)
     {}
 
-    uint8_t state() { return state_; }
-    uint32_t method() { return method_; }
-    std::string uri() { return uri_; }
-    uint32_t httpVersion() { return httpVersion_; } 
+    uint8_t State() { return state_; }
+    uint32_t Method() { return method_; }
+    std::string URI() { return uri_; }
+    uint32_t HTTPVersion() { return httpVersion_; } 
 
-    void setMethod(uint32_t method) { method_ = method; }
-    void setState(uint8_t state) { state_ = state; }
-    void setHTTPVersion(uint32_t version) { httpVersion_ = version; }
-    void setUri(const u_char* start, const u_char* end)
-    {
-        size_t size = end - start;
-        uri_ = std::string(reinterpret_cast<const char*>(start), size);
-    }
+    void SetMethod(uint32_t method) { method_ = method; }
+    void SetState(uint8_t state) { state_ = state; }
+    void SetHTTPVersion(uint32_t version) { httpVersion_ = version; }
+    void SetUri(const u_char*, const u_char*);
+    void SetHeaders(const u_char*, const u_char*, const u_char*, const u_char*);
+
+    Header Headers() { return headers_; }
 
 private:
+
     boost::weak_ptr<Connection> connection_;
 
     uint8_t state_;    // parsing state
@@ -54,6 +57,7 @@ private:
     std::string uri_;
     uint32_t httpVersion_;
     std::string requestLine_;
+    Header headers_;
 };
 
 

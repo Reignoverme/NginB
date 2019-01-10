@@ -7,7 +7,7 @@ LIB_SRC = \
 	Connection.cpp \
 	Buffer.cpp \
 	HTTPRequestHandler.cpp \
-	Request.h
+	Request.cpp
 
 TEST_SRC = $(notdir $(LIB_SRC))
 OBJS = $(patsubst %.cpp, %.o,$(TEST_SRC))

@@ -55,7 +55,7 @@ int Connection::handleRead()
     size_t clientHeaderBufferSize = 1024;    //size = 1k by default - nginx.
                                              //TODO put this in config file.
     Buffer headerBuf(clientHeaderBufferSize); 
-    ssize_t n = headerBuf.readFd(fd_, 1024); 
+    ssize_t n = headerBuf.ReadFd(fd_, 1024); 
 
     if (n < 0) {
         std::cout << "recv error: " << strerror(errno);
@@ -68,19 +68,36 @@ int Connection::handleRead()
         return 1;
     }
 
-    int rc = processRequestLine(headerBuf, request_);
+    int rc = ProcessRequestLine(headerBuf, request_);
 
     if (rc == OK) {
         /* the request line has been parsed successfully */
 
         /* test case */
-        std::cout << "method: " << request_->method() << std::endl
-            << "uri: " << request_->uri() << std::endl
-            << "HTTP version: " << request_->httpVersion() << std::endl;
 
+        ProcessRequestHeaders(headerBuf, request_);
+        
+        std::cout << "----- request line -----\n"; 
+        std::cout << "method: " << request_->Method() << std::endl
+            << "uri: " << request_->URI() << std::endl
+            << "HTTP version: " << request_->HTTPVersion() << std::endl;
+        
+        std::cout << "----- request headers -----\n";
+        for(std::map<std::string, std::string>::const_iterator it
+                = request_->Headers().begin();
+            it != request_->Headers().end();
+            it++) {
+
+            std::cout << it->first << ": " << it->second << std::endl;
+        }       
         return OK;
+    } else if (rc >= 10){
+        std::cout << "Bad request.\n";
+        //TODO send 4xx response.
+        ::send(fd_, "400 Bad Request\r\n", sizeof("400 Bad Request\r\n"), 0);
+        return -1;
     } else {
-        std::cout << "process request line failed.\n";
+        std::cout << "parse request line failed.\n";
         return -1;
     } 
 }

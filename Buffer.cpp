@@ -1,6 +1,6 @@
 #include "Buffer.h"
 
-ssize_t Buffer::readFd(int fd, size_t size)
+ssize_t Buffer::ReadFd(int fd, size_t size)
 {
     ssize_t n;
 

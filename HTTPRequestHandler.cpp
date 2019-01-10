@@ -2,6 +2,7 @@
 #include "Buffer.h"
 #include "Request.h"
 
+// ------------------ static variables ---------------
 static uint32_t  usual[] = {
     0xffffdbfe, /* 1111 1111 1111 1111  1101 1011 1111 1110 */
 
@@ -20,28 +21,293 @@ static uint32_t  usual[] = {
     0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */
 };
 
-static int parseRequestLine(Buffer&,
+// --------------- static functions ------------------
+static int ParseRequestLine(Buffer&,
+        const boost::shared_ptr<Request>&);
+static int ParseHeaderLine(Buffer&,
         const boost::shared_ptr<Request>&);
 
 
-int processRequestLine(Buffer& headerBuf,
+int ProcessRequestLine(Buffer& headerBuf,
         const boost::shared_ptr<Request>& r)
 {
     int rc = AGAIN;
     
-    for( ;; ){
-        rc = parseRequestLine(headerBuf, r);
+    for( ;; ) {
+
+        if (rc == AGAIN) {
+            //TODO read from socket.
+        }
+
+        rc = ParseRequestLine(headerBuf, r);
 
         if (rc == OK) {
              
             /* the request line has been parsed successfully */
 
-            return rc;
-        } else {
-            return -1;
         }
+    return rc;
     }
 
+}
+
+void ProcessRequestHeaders(Buffer& headerBuf,
+        const boost::shared_ptr<Request>& r)
+{
+    int rc = AGAIN;
+    //ssize_t n;
+
+    for( ;; ) {
+        
+        if (rc == AGAIN) {
+            
+            if (headerBuf.Pos() == headerBuf.End())
+            {
+                //TODO allocate larger buffer.
+                std::cout << "Buffer too small.\n";
+                return;
+            }
+
+            //TODO read from buffer.
+        }
+
+        rc = ParseHeaderLine(headerBuf, r);   
+
+        if (rc == OK) {
+            //TODO set <header_name: value>
+            continue;
+        }
+
+        if (rc == HTTP_PARSE_HEADER_DONE) {
+
+            return;
+        }
+    }
+}
+
+/*
+ * HTTP request header state machine.
+ * @return  OK
+ *          successfully parsed 1 line.
+ *
+ *          HTTP_PARSE_HEADER_DONE
+ *          successfully parsed all headers.
+ *
+ *          ERROR
+ *          invalid header filed.
+ */
+
+static int ParseHeaderLine(Buffer& headerBuf,
+        const boost::shared_ptr<Request>& r)
+{
+    u_char* p;
+    u_char* header_name_start, *header_name_end;
+    u_char* header_value_start, *header_value_end;
+    u_char ch, c;
+
+    static u_char lowcase[] =
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0-\0\0" "0123456789\0\0\0\0\0\0"
+        "\0abcdefghijklmnopqrstuvwxyz\0\0\0\0\0"
+        "\0abcdefghijklmnopqrstuvwxyz\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+        "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+
+    enum {
+        sw_start = 0,
+        sw_name,
+        sw_space_before_value,
+        sw_value,
+        sw_space_after_value,
+        sw_ignore_line,
+        sw_almost_done,
+        sw_header_almost_done
+    };
+
+    uint8_t state = r->State();
+
+    for (p = headerBuf.Pos(); p < headerBuf.Last(); p++) {
+        ch = *p;
+
+        switch (state) {
+
+        case sw_start:
+            header_name_start = p;
+            std::cout << "sw_start: " << (int)ch << std::endl;
+
+            switch (ch) {
+            case '\r':
+                //TODO header_end = p;
+                state = sw_header_almost_done;
+                break;
+            case '\n':
+                //TODO header_end = p;
+                goto header_done;
+            default:
+                state = sw_name;
+
+                c = lowcase[ch];
+
+                if (c) {
+                   //TODO other stuff
+                   
+                   //skip chars
+                   break;
+                }
+            }
+            break;
+
+        case sw_name:
+            c = lowcase[ch];
+            std::cout << "sw_name: " << c << std::endl;
+
+            if (c) {
+                //TODO other stuff
+                break;
+            }
+            if (ch == ':') {
+                header_name_end = p;
+                
+                state = sw_space_before_value;
+                break;
+            }
+            if (ch == '\r') {
+                //TODO header_name_end = p;
+                //TODO header_start = p;
+                //TODO header_end = p;
+
+                state = sw_almost_done;
+                break;
+            }
+            if (ch == '\n') {
+                //TODO header_name_end = p;
+                //TODO header_start = p;
+                //TODO header_end = p;
+
+                goto done;
+            }
+            if (ch == '\0') {
+                return HTTP_PARSE_INVALID_HEADER;
+            }
+
+            break;
+
+        case sw_space_before_value:
+            std::cout << "sw_space_before_value\n";
+
+            switch(ch) {
+            case ' ':
+                break;
+            case '\r':
+                //TODO header_start = p
+                //TODO header_end = p
+                state = sw_almost_done;
+                break;
+            case '\n':
+                //TODO header_start = p
+                //TODO header_end = p
+                goto done;
+            case '\0':
+                return HTTP_PARSE_INVALID_HEADER;
+            default:
+                std::cout << ch << std::endl;
+                header_value_start = p;
+                state = sw_value;
+                break;
+            }
+            
+            break;
+
+        case sw_value:
+            std::cout << "sw_value: " << ch << std::endl;
+
+            switch (ch) {
+            case ' ':
+                header_value_end = p;
+                state = sw_space_after_value;
+                break;
+            case '\r':
+                header_value_end = p;
+                state = sw_almost_done;
+                break;
+            case '\n':
+                header_value_end = p;
+                goto done;
+            case '\0':
+                return HTTP_PARSE_INVALID_HEADER;
+            } 
+            break;
+
+        case sw_space_after_value:
+            std::cout << "sw_space_after_value\n";
+
+            switch (ch) {
+            case ' ':
+                break;
+            case '\r':
+                state = sw_almost_done;
+                break;
+            case '\n':
+                goto done;
+            case '\0':
+                return HTTP_PARSE_INVALID_HEADER;
+            }
+            break;
+
+        case sw_almost_done:
+            std::cout << "sw_almost_done\n";
+
+            switch (ch) {
+            case '\n':
+                goto done;
+            case '\r':
+                break;
+            default:
+                return HTTP_PARSE_INVALID_HEADER;
+            }
+            break;
+
+        case sw_header_almost_done:
+            std::cout << "header_almost_done\n";
+
+            switch (ch) {
+            case '\n':
+                goto header_done;
+            default:
+                return HTTP_PARSE_INVALID_HEADER;
+            }
+
+        }//switch (state)
+    }//for
+
+    headerBuf.SetPos(p);
+    r->SetState(state);
+    //TODO r->header_hash = hash;
+    //TODO r->lowcase_index = i;
+
+    return AGAIN;
+
+done:
+    std::cout << "done\n";
+
+    headerBuf.SetPos(p + 1);
+    r->SetHeaders(header_name_start, header_name_end,
+                  header_value_start, header_value_end);
+    std::cout << "set headers\n";
+    r->SetState(sw_start);
+    //TODO r->header_hash = hash;
+    //TODO r->lowcase_index = i;
+    return OK;
+
+header_done:
+    std::cout << "header_done\n";
+
+    headerBuf.SetPos(p + 1);
+    r->SetState(sw_start);
+
+    return HTTP_PARSE_HEADER_DONE;
 }
 
 /*
@@ -58,7 +324,7 @@ int processRequestLine(Buffer& headerBuf,
  *
  */
 
-static int parseRequestLine(Buffer& header,
+static int ParseRequestLine(Buffer& header,
         const boost::shared_ptr<Request>& r)
 {
     u_char  c, ch, *p, *m;
@@ -94,9 +360,9 @@ static int parseRequestLine(Buffer& header,
         sw_almost_done
     };
 
-    uint8_t state = r->state();
+    uint8_t state = r->State();
 
-    for (p = header.start(); p < header.last(); p++) {
+    for (p = header.Start(); p < header.Last(); p++) {
         ch = *p;
 
         switch (state) {
@@ -121,13 +387,13 @@ static int parseRequestLine(Buffer& header,
                 case 3:
                     std::cout << "method: GET\n";
                     if(str3_cmp(m, 'G', 'E', 'T')) {
-                        r->setMethod(HTTP_GET);
+                        r->SetMethod(HTTP_GET);
                         break;
                     }
 
                 case 4:
                     if(str4_cmp(m, 'P', 'O', 'S', 'T')) {
-                        r->setMethod(HTTP_POST);
+                        r->SetMethod(HTTP_POST);
                         break;
                     }
 
@@ -548,20 +814,20 @@ static int parseRequestLine(Buffer& header,
         } //switch
     } // for
 
-    header.setPos(p);
-    r->setState(state);
+    header.SetPos(p);
+    r->SetState(state);
 
     return AGAIN;
     
 done:
 
     std::cout << "done\n";
-    header.setPos(p+1);
-    r->setHTTPVersion(http_major * 1000 + http_minor);
-    r->setState(sw_start);
-    r->setUri(uri_start, uri_end);
+    header.SetPos(p+1);
+    r->SetHTTPVersion(http_major * 1000 + http_minor);
+    r->SetState(sw_start);
+    r->SetUri(uri_start, uri_end);
 
-    if(r->httpVersion() < 1000 && r->method() != HTTP_GET) {
+    if(r->HTTPVersion() < 1000 && r->Method() != HTTP_GET) {
         return HTTP_PARSE_INVALID_09_METHOD;
     }
 

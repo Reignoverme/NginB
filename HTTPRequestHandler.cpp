@@ -253,6 +253,9 @@ static int ParseHeaderLine(Buffer& headerBuf,
                 goto done;
             case '\0':
                 return HTTP_PARSE_INVALID_HEADER;
+            default:
+                state = sw_value;
+                break;
             }
             break;
 
@@ -755,7 +758,7 @@ static int ParseRequestLine(Buffer& header,
         
         case sw_first_minor_digit:
             std::cout << "first_minor_digit\n";
-            if (ch <= '0' || ch >= '9') {
+            if (ch < '0' || ch > '9') {
                 return HTTP_PARSE_INVALID_REQUEST;
             }
 

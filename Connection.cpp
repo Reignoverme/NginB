@@ -81,10 +81,10 @@ int Connection::handleRead()
         std::cout << "method: " << request_->Method() << std::endl
             << "uri: " << request_->URI() << std::endl
             << "HTTP version: " << request_->HTTPVersion() << std::endl;
-        
+
         std::cout << "----- request headers -----\n";
-        for(std::map<std::string, std::string>::const_iterator it
-                = request_->Headers().begin();
+        for(std::unordered_map<std::string, std::string>::const_iterator
+            it = request_->Headers().begin();
             it != request_->Headers().end();
             it++) {
 

@@ -12,7 +12,6 @@
 #include <mutex>
 #include <map>
 #include <fcntl.h>
-#include "Buffer.h"
 #include "Channel.h"
 #include "Connection.h"
 
@@ -28,7 +27,7 @@ public:
     void setConnectionCallback(ConnectionCallback& cb)
     { onConnection_ = cb; }
     
-    void CloseConnection(Connection* c)
+    void closeConnection(Connection* c)
     { connections_.erase(c->fd()); }  // erase calls dtor of boost::shared_ptr.
 
     int fd() { return sockfd_; }
@@ -38,7 +37,7 @@ public:
 
 private:
     typedef std::map<int, boost::shared_ptr<Connection>> ConnMap;
-    int handleRead();
+    void handleRead();
     
     ConnectionCallback onConnection_;
     std::mutex mutex_;

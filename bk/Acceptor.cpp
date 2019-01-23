@@ -1,5 +1,4 @@
 #include "Acceptor.h"
-#include "HTTPCore.h"
 
 Acceptor::Acceptor(EventLoop* loop,
                    int port,
@@ -27,7 +26,7 @@ Acceptor::Acceptor(EventLoop* loop,
         boost::bind(&Acceptor::handleRead, this));
 }
 
-int Acceptor::handleRead()
+void Acceptor::handleRead()
 {
     struct sockaddr_in peer;
     socklen_t len = sizeof(peer);
@@ -42,7 +41,7 @@ int Acceptor::handleRead()
         if(errno & (EAGAIN|EWOULDBLOCK))
         {
             std::cout << "accept() not ready.";
-            return AGAIN;
+            return;
         }
         
         if(errno == ECONNABORTED)
@@ -51,7 +50,7 @@ int Acceptor::handleRead()
         }
         
         // TODO other errors
-        return ERROR;
+        return;
     }
 
     int pPort = peer.sin_port;
@@ -59,12 +58,10 @@ int Acceptor::handleRead()
         boost::asio::ip::address::from_string(inet_ntoa(peer.sin_addr));
 
     // use connections_ to manage connection life time.
-    boost::shared_ptr<Connection> c(new Connection(loop_, this, nullptr, connfd, pPort, pAddr));
-    c->GetRequest();
-    c->ConnEstablished(true, false);
-    c->SetReadCallback();
+    boost::shared_ptr<Connection> c(new Connection(loop_, this, connfd, pPort, pAddr));
+    c->getRequest();
+    c->connEstablished();
     connections_[c->fd()] = c;
-    return OK;
 }
 
 void Acceptor::listen()
@@ -92,7 +89,7 @@ void Acceptor::listen()
     {
         if(!acceptChannel_->isRactive())
         {
-            acceptChannel_->enableReading(false);
+            acceptChannel_->enableReading();
         }
     } else {
         if(acceptChannel_->isRactive()) 

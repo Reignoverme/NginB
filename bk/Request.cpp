@@ -1,19 +1,10 @@
 #include "Request.h"
 
-void Request::SetField(const u_char* start, const u_char* end, uint8_t field)
+
+void Request::SetUri(const u_char* start, const u_char* end)
 {
     size_t size = end - start;
-
-    switch (field) {
-    case URI_FIELD:
-        uri_ = std::string(reinterpret_cast<const char*>(start), size);
-        break;
-    case EXT_FIELD:
-        ext_ = std::string(reinterpret_cast<const char*>(start), size);
-        break;
-    default:
-        std::cout << "invalid extension.\n";
-    }
+    uri_ = std::string(reinterpret_cast<const char*>(start), size);
 }
 
 void Request::SetHeaders(const u_char* nameStart,

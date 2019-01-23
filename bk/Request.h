@@ -20,10 +20,8 @@
 #define HTTP_PARSE_INVALID_REQUEST     11
 #define HTTP_PARSE_INVALID_VERSION     12
 #define HTTP_PARSE_INVALID_09_METHOD   13
-#define HTTP_PARSE_INVALID_HEADER      14
 
-#define URI_FIELD 0x01
-#define EXT_FIELD 0x02
+#define HTTP_PARSE_INVALID_HEADER      14
 
 class Connection;
 class Buffer;
@@ -32,37 +30,32 @@ class Request : boost::noncopyable
 {
 public:
     typedef std::unordered_map<std::string, std::string> Header;
-    typedef boost::shared_ptr<Connection> ConnectionPt;
 
-    Request(ConnectionPt c)
+    Request(boost::shared_ptr<Connection> c)
         :connection_(c),
          state_(0)
     {}
 
-    const std::string& Uri() const { return uri_; }
-    const std::string& Ext() const { return ext_; }
-    uint8_t     State() const { return state_; }
-    uint32_t    Method() const { return method_; }
-    uint32_t    HTTPVersion() const { return httpVersion_; } 
-    uint32_t    Phase() const { return phase_; }
-    Header& Headers()            { return headers_; }
+    uint8_t State() const { return state_; }
+    uint32_t Method() const { return method_; }
+    std::string URI() const { return uri_; }
+    uint32_t HTTPVersion() const { return httpVersion_; } 
+    uint32_t Phase() const { return phase_; }
 
     void SetMethod(const uint32_t method) { method_ = method; }
     void SetState(const uint8_t state) { state_ = state; }
     void SetHTTPVersion(const uint32_t version) { httpVersion_ = version; }
     void SetPhase(const uint32_t phase) { phase_ = phase; }
-    void SetField(const u_char*, const u_char*, uint8_t filed);
+    void SetUri(const u_char*, const u_char*);
     void SetHeaders (const u_char*, const u_char*, const u_char*, const u_char*);
- 
-#if 0
+    
     void SetReadEventCallback(const boost::function<void(/*TODO*/)>& cb)
     { readcallback_ = cb; }
 
     void SetWriteEventCallback(const boost::function<void(/*TODO*/)>& cb)
     { writecallback_ = cb; }
-#endif
 
-    const ConnectionPt GetConnection() const { return connection_.lock(); }
+    const Header& Headers() { return headers_; }
 
 private:
     boost::weak_ptr<Connection> connection_;
@@ -72,7 +65,7 @@ private:
     uint32_t method_;
     std::string uri_;
     uint32_t httpVersion_;
-    std::string ext_;
+    std::string requestLine_;
     Header headers_;
     uint32_t phase_;
 };

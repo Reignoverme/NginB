@@ -1,8 +1,6 @@
 #include "HTTPRequestHandler.h"
 #include "Buffer.h"
-#include "HTTPCore.h"
 #include "Request.h"
-#include "Response.h"
 
 // ------------------ static variables ---------------
 static uint32_t  usual[] = {
@@ -24,45 +22,53 @@ static uint32_t  usual[] = {
 };
 
 // --------------- static functions ------------------
-static int ParseRequestLine(const boost::scoped_ptr<Buffer>&,
+static int ParseRequestLine(Buffer&,
         const boost::shared_ptr<Request>&);
-static int ParseHeaderLine(const boost::scoped_ptr<Buffer>&,
+static int ParseHeaderLine(Buffer&,
         const boost::shared_ptr<Request>&);
 
 
-int ProcessRequestLine(const boost::scoped_ptr<Buffer>& headerBuf,
-        const boost::shared_ptr<Request>& r)
-{
-    int rc;
-
-    rc = ParseRequestLine(headerBuf, r);
-
-    std::cout << "process request line returning " << rc << std::endl;
-    return rc;
-}
-
-int ProcessRequestHeaders(const boost::scoped_ptr<Buffer>& headerBuf,
+int ProcessRequestLine(Buffer& headerBuf,
         const boost::shared_ptr<Request>& r)
 {
     int rc = AGAIN;
+    
+    for( ;; ) {
 
-    for ( ;; )
-    {
         if (rc == AGAIN) {
+            //TODO read from socket.
+        }
 
-            if (headerBuf->Pos() == headerBuf->End())
+        rc = ParseRequestLine(headerBuf, r);
+
+        if (rc == OK) {
+             
+            /* the request line has been parsed successfully */
+
+        }
+    return rc;
+    }
+
+}
+
+void ProcessRequestHeaders(Buffer& headerBuf,
+        const boost::shared_ptr<Request>& r)
+{
+    int rc = AGAIN;
+    //ssize_t n;
+
+    for( ;; ) {
+        
+        if (rc == AGAIN) {
+            
+            if (headerBuf.Pos() == headerBuf.End())
             {
                 //TODO allocate larger buffer.
-                ////std::cout << "Buffer too small.\n";
-                return -1;
+                std::cout << "Buffer too small.\n";
+                return;
             }
 
-            if (headerBuf->Pos() == headerBuf->Last())
-            {
-                std::cout << "pos == last\n";
-                return AGAIN;
-            }
-
+            //TODO read from buffer.
         }
 
         rc = ParseHeaderLine(headerBuf, r);   
@@ -72,7 +78,8 @@ int ProcessRequestHeaders(const boost::scoped_ptr<Buffer>& headerBuf,
         }
 
         if (rc == HTTP_PARSE_HEADER_DONE) {
-            return OK;
+
+            return;
         }
     }
 }
@@ -89,7 +96,7 @@ int ProcessRequestHeaders(const boost::scoped_ptr<Buffer>& headerBuf,
  *          invalid header filed.
  */
 
-static int ParseHeaderLine(const boost::scoped_ptr<Buffer>& headerBuf,
+static int ParseHeaderLine(Buffer& headerBuf,
         const boost::shared_ptr<Request>& r)
 {
     u_char* p;
@@ -120,14 +127,14 @@ static int ParseHeaderLine(const boost::scoped_ptr<Buffer>& headerBuf,
 
     uint8_t state = r->State();
 
-    for (p = headerBuf->Pos(); p < headerBuf->Last(); p++) {
+    for (p = headerBuf.Pos(); p < headerBuf.Last(); p++) {
         ch = *p;
 
         switch (state) {
 
         case sw_start:
             header_name_start = p;
-            ////std::cout << "sw_start: " << (int)ch << std::endl;
+            std::cout << "sw_start: " << (int)ch << std::endl;
 
             switch (ch) {
             case '\r':
@@ -153,7 +160,7 @@ static int ParseHeaderLine(const boost::scoped_ptr<Buffer>& headerBuf,
 
         case sw_name:
             c = lowcase[ch];
-            ////std::cout << "sw_name: " << c << std::endl;
+            std::cout << "sw_name: " << c << std::endl;
 
             if (c) {
                 //TODO other stuff
@@ -187,7 +194,7 @@ static int ParseHeaderLine(const boost::scoped_ptr<Buffer>& headerBuf,
             break;
 
         case sw_space_before_value:
-            ////std::cout << "sw_space_before_value\n";
+            std::cout << "sw_space_before_value\n";
 
             switch(ch) {
             case ' ':
@@ -204,7 +211,7 @@ static int ParseHeaderLine(const boost::scoped_ptr<Buffer>& headerBuf,
             case '\0':
                 return HTTP_PARSE_INVALID_HEADER;
             default:
-                //std::cout << ch << std::endl;
+                std::cout << ch << std::endl;
                 header_value_start = p;
                 state = sw_value;
                 break;
@@ -213,7 +220,7 @@ static int ParseHeaderLine(const boost::scoped_ptr<Buffer>& headerBuf,
             break;
 
         case sw_value:
-            //std::cout << "sw_value: " << ch << std::endl;
+            std::cout << "sw_value: " << ch << std::endl;
 
             switch (ch) {
             case ' ':
@@ -233,7 +240,7 @@ static int ParseHeaderLine(const boost::scoped_ptr<Buffer>& headerBuf,
             break;
 
         case sw_space_after_value:
-            //std::cout << "sw_space_after_value\n";
+            std::cout << "sw_space_after_value\n";
 
             switch (ch) {
             case ' ':
@@ -252,7 +259,7 @@ static int ParseHeaderLine(const boost::scoped_ptr<Buffer>& headerBuf,
             break;
 
         case sw_almost_done:
-            //std::cout << "sw_almost_done\n";
+            std::cout << "sw_almost_done\n";
 
             switch (ch) {
             case '\n':
@@ -265,7 +272,7 @@ static int ParseHeaderLine(const boost::scoped_ptr<Buffer>& headerBuf,
             break;
 
         case sw_header_almost_done:
-            //std::cout << "header_almost_done\n";
+            std::cout << "header_almost_done\n";
 
             switch (ch) {
             case '\n':
@@ -277,7 +284,7 @@ static int ParseHeaderLine(const boost::scoped_ptr<Buffer>& headerBuf,
         }//switch (state)
     }//for
 
-    headerBuf->SetPos(p);
+    headerBuf.SetPos(p);
     r->SetState(state);
     //TODO r->header_hash = hash;
     //TODO r->lowcase_index = i;
@@ -285,21 +292,21 @@ static int ParseHeaderLine(const boost::scoped_ptr<Buffer>& headerBuf,
     return AGAIN;
 
 done:
-    //std::cout << "done\n";
+    std::cout << "done\n";
 
-    headerBuf->SetPos(p + 1);
+    headerBuf.SetPos(p + 1);
     r->SetHeaders(header_name_start, header_name_end,
                   header_value_start, header_value_end);
-    //std::cout << "set headers\n";
+    std::cout << "set headers\n";
     r->SetState(sw_start);
     //TODO r->header_hash = hash;
     //TODO r->lowcase_index = i;
     return OK;
 
 header_done:
-    //std::cout << "header_done\n";
+    std::cout << "header_done\n";
 
-    headerBuf->SetPos(p + 1);
+    headerBuf.SetPos(p + 1);
     r->SetState(sw_start);
 
     return HTTP_PARSE_HEADER_DONE;
@@ -319,14 +326,12 @@ header_done:
  *
  */
 
-static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
+static int ParseRequestLine(Buffer& header,
         const boost::shared_ptr<Request>& r)
 {
     u_char  c, ch, *p, *m;
     u_char *uri_start, *uri_end;
-    u_char *ext_start;
     unsigned int http_major= 0, http_minor = 0;
-    ext_start = nullptr;
     enum {
         sw_start = 0,
         sw_method,
@@ -359,12 +364,12 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
 
     uint8_t state = r->State();
 
-    for (p = header->Pos(); p < header->Last(); p++) {
+    for (p = header.Start(); p < header.Last(); p++) {
         ch = *p;
 
         switch (state) {
         case sw_start:
-            //std::cout << "sw_start\n";
+            std::cout << "sw_start\n";
             m = p;    // m points to the start of request line.
             if (ch == '\n' || ch == '\r') {
                 break;
@@ -377,12 +382,12 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
             break;
 
         case sw_method:
-            //std::cout << "sw_method\n";
+            std::cout << "sw_method\n";
 
             if( ch == ' ' ) {
                 switch (p - m) {
                 case 3:
-                    //std::cout << "method: GET\n";
+                    std::cout << "method: GET\n";
                     if(str3_cmp(m, 'G', 'E', 'T')) {
                         r->SetMethod(HTTP_GET);
                         break;
@@ -405,9 +410,9 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
 
         case sw_spaces_before_uri: 
 
-            //std::cout << "sw_spaces_before_uri\n";
+            std::cout << "sw_spaces_before_uri\n";
             if(ch == '/') {
-                //std::cout << "/\n";
+                std::cout << "/\n";
                 uri_start = p;
 
                 /*
@@ -544,7 +549,7 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
 
         case sw_after_slash_in_uri:
             
-            //std::cout << "sw_after_slash_in_uri: " << ch << std::endl;
+            std::cout << "sw_after_slash_in_uri: " << ch << std::endl;
             if(usual[ch >> 5] & (1U << (ch & 0x1f))) {
                 state = sw_check_uri;
                 break;
@@ -557,9 +562,7 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
                 break;
             case '\r':
                 //TODO r->uri_end = p
-                uri_end = p;
                 //TODO r->http_minor = 9
-                http_minor = 9;
                 state = sw_almost_done;
                 break;
             case '\n':
@@ -580,19 +583,18 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
 
         case sw_check_uri:
 
-            //std::cout << "sw_check_uri: " << ch << std::endl;
+            std::cout << "sw_check_uri: " << ch << std::endl;
             if(usual[ch >> 5] & (1U << (ch&0x1f))) {
                 break;
             }
 
             switch (ch) {
             case ' ':
-                //std::cout << "uri end\n";
+                std::cout << "uri end\n";
                 uri_end = p;
                 state = sw_check_uri_http_09;
                 break;
             case '.':
-                ext_start = p + 1;
                 break;
             case '\r':
                 //TODO r->uri_end = p
@@ -605,8 +607,7 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
                 goto done;
             case '/':
                 //TODO r->complex_uri = 1
-                //state = sw_uri;
-                state = sw_after_slash_in_uri;
+                state = sw_uri;
                 break;
             case '?':
                 //TODO r->args_start = p+1;
@@ -620,7 +621,7 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
             break;
 
         case sw_check_uri_http_09:
-            //std::cout << "check_uri_http_09\n";
+            std::cout << "check_uri_http_09\n";
             switch (ch) {
             case ' ':
                 break;
@@ -635,7 +636,7 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
         
         case sw_uri:
             
-            //std::cout << "sw_uri: " << ch << std::endl;
+            std::cout << "sw_uri: " << ch << std::endl;
             if(usual[ch >> 5] & (1U << (ch&0x1f))) {
                 break;
             }
@@ -682,7 +683,7 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
             break;
 
         case sw_http_H:
-            //std::cout << "H\n";
+            std::cout << "H\n";
             switch (ch) {
             case 'T':
                 state = sw_http_HT;
@@ -693,7 +694,7 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
             break;
 
         case sw_http_HT:
-            //std::cout << "HT\n";
+            std::cout << "HT\n";
             switch (ch) {
             case 'T':
                 state = sw_http_HTT;
@@ -704,7 +705,7 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
             break;
 
         case sw_http_HTT:
-            //std::cout << "HTT\n";
+            std::cout << "HTT\n";
             switch (ch) {
             case 'P':
                 state = sw_http_HTTP;
@@ -715,7 +716,7 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
             break;
 
         case sw_http_HTTP:
-            //std::cout << "HTTP\n";
+            std::cout << "HTTP\n";
             switch (ch) {
             case '/':
                 state = sw_first_major_digit;
@@ -726,13 +727,13 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
             break;
 
         case sw_first_major_digit:
-            //std::cout << "first_major_digit\n";
+            std::cout << "first_major_digit\n";
             if (ch < '1' || ch > '9') {
                 return HTTP_PARSE_INVALID_REQUEST;
             }
 
             http_major = ch - '0';
-            //std::cout << "first_major_digit: " << http_major << std::endl;
+            std::cout << "first_major_digit: " << http_major << std::endl;
 
             if ((ch - '0') > 1) {
                 return HTTP_PARSE_INVALID_VERSION; 
@@ -742,7 +743,7 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
             break;
         
         case sw_major_digit:
-            //std::cout << "major_digit\n";
+            std::cout << "major_digit\n";
             if(ch == '.') {
                 state = sw_first_minor_digit;
                 break;
@@ -755,18 +756,18 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
             //TODO http_major = r->http_major * 10 + (ch - '0');
         
         case sw_first_minor_digit:
-            //std::cout << "first_minor_digit\n";
+            std::cout << "first_minor_digit\n";
             if (ch < '0' || ch > '9') {
                 return HTTP_PARSE_INVALID_REQUEST;
             }
 
             http_minor = ch - '0';
-            //std::cout << "http_minor: " << http_minor << std::endl;
+            std::cout << "http_minor: " << http_minor << std::endl;
             state = sw_minor_digit;
             break;
 
         case sw_minor_digit:
-            //std::cout << "minor_digit\n";
+            std::cout << "minor_digit\n";
             if (ch == '\r') {
                 state = sw_almost_done;
                 break;
@@ -804,7 +805,7 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
 
         case sw_almost_done:
             //TODO r->request_end = p-1;
-            //std::cout << "almost done\n";
+            std::cout << "almost done\n";
             switch (ch) {
             case '\n':
                 goto done;
@@ -815,230 +816,23 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
         } //switch
     } // for
 
-    header->SetPos(p);
+    header.SetPos(p);
     r->SetState(state);
 
     return AGAIN;
     
 done:
-    //std::cout << "done\n";
-    header->SetPos(p+1);
-    //std::cout << "done\n";
+
+    std::cout << "done\n";
+    header.SetPos(p+1);
     r->SetHTTPVersion(http_major * 1000 + http_minor);
-    //std::cout << "done\n";
     r->SetState(sw_start);
-    //std::cout << "done\n";
-    r->SetField(uri_start, uri_end, URI_FIELD);
-    //std::cout << "done\n";
-    if (ext_start) {
-        r->SetField(ext_start, uri_end, EXT_FIELD);
-    }
-    //std::cout << "done\n";
+    r->SetUri(uri_start, uri_end);
 
     if(r->HTTPVersion() < 1000 && r->Method() != HTTP_GET) {
         return HTTP_PARSE_INVALID_09_METHOD;
     }
-    //std::cout << "done\n";
 
     return OK;
 }
 
-int ParseStatusLine(const boost::scoped_ptr<Buffer>& buf,
-        const boost::shared_ptr<Response>& r)
-{
-    u_char   ch;
-    u_char  *p;
-    u_char  *status_begin, *status_end;
-    uint8_t  state, count = 0;
-
-    unsigned int http_major= 0, http_minor = 0;
-    enum {
-        sw_start = 0,
-        sw_H,
-        sw_HT,
-        sw_HTT,
-        sw_HTTP,
-        sw_first_major_digit,
-        sw_major_digit,
-        sw_first_minor_digit,
-        sw_minor_digit,
-        sw_status,
-        sw_space_after_status,
-        sw_status_text,
-        sw_almost_done
-    };
-    
-    state =  r->State();
-
-    for (p = buf->Pos(); p < buf->Last(); p++) {
-        ch = *p;
-
-        switch (state) {
-        case sw_start:
-            switch (ch) {
-            case 'H':
-                state = sw_H;
-                break;
-            default:
-                return ERROR;
-            }
-            break;
-            
-        case sw_H:
-            switch (ch) {
-            case 'T':
-                state = sw_HT;
-                break;
-            default:
-                return ERROR;
-            }
-            break;
-
-        case sw_HT:
-            switch (ch) {
-            case 'T':
-                state = sw_HTT;
-                break;
-            default:
-                return ERROR;
-            }
-            break;
-
-        case sw_HTT:
-            switch (ch) {
-            case 'P':
-                state = sw_HTTP;
-                break;
-            default:
-                return ERROR;
-            }
-            break;
-
-        case sw_HTTP:
-            switch (ch) {
-            case '/':
-                state = sw_first_major_digit;
-                break;
-            default:
-                return ERROR;
-            }
-            break;
-
-        case sw_first_major_digit:
-            if (ch < '0' || ch > '9') {
-                return ERROR;
-            }
-            http_major = ch - '0';
-            state = sw_major_digit;
-            break;
-
-        case sw_major_digit:
-            if (ch == '.') {
-                state = sw_first_minor_digit;
-                break;
-            }
-
-            if (ch < '0' || ch > '9') {
-                return ERROR;
-            }
-            
-            http_major = http_major*10 + ch - '0';
-            break;
-
-        case sw_first_minor_digit:
-            if (ch < '0' || ch > '9') {
-                return ERROR;
-            }
-
-            http_minor = ch - '0';
-            state = sw_minor_digit;
-            break;
-
-        case sw_minor_digit:
-            if (ch == ' ') {
-                state = sw_status;
-                break;
-            }
-
-            if (ch < '0' || ch > '9') {
-                return ERROR;
-            }
-
-            http_minor = http_minor*10 + ch - '0';
-            break;
-
-        case sw_status:
-            if (ch == ' ') {
-                break;
-            }
-
-            if (ch < '0' || ch > '9') {
-                return ERROR;
-            }
-            
-            r->Status() = r->Status() * 10 + ch - '0'; 
-            if (++count == 3) {
-                state = sw_space_after_status;
-                status_begin = p - 2;
-            }
-            
-            break;
-
-        case sw_space_after_status:
-            switch (ch) {
-            case ' ':
-                state = sw_status_text;
-                break;
-            case '\r':
-                state = sw_almost_done;
-                break;
-            case '\n':
-                goto done;
-            default:
-                return ERROR;
-            }
-            break;
-
-        case sw_status_text:
-            switch (ch) {
-            case '\r':
-                state = sw_almost_done;
-                break;
-            case '\n':
-                goto done;
-            }
-            break;
-
-        case sw_almost_done:
-            status_end = p - 1;
-            switch (ch) {
-            case '\n':
-                goto done;
-            default:
-                return ERROR;
-            }
-
-        } // switch
-    } // for
-
-    buf->SetPos(p);
-    r->SetState(state);
-
-    return AGAIN;
-
-done:
-    buf->SetPos(p+1);
-
-    if (status_end == nullptr) {
-        status_end = p;
-    }
-
-    r->SetHTTPVersion(http_major * 1000 + http_minor);
-    r->SetState(sw_start);
-    std::cout << "set status line: " << std::string(
-            reinterpret_cast<const char*>(status_begin), status_end - status_begin 
-            );
-    r->SetStatusLine(status_begin, status_end);
-
-    return OK;
-}

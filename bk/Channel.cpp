@@ -11,22 +11,16 @@ void Channel::disable()
     loop_->disableChannel(this);
 }
 
-void Channel::enableReading(bool clear)
+void Channel::enableReading()
 { 
     ractive_ = true; 
-    if (clear) {
-        events_ &= 0;
-    }
     events_ |= EPOLLIN | EPOLLRDHUP;
     update();
 }
 
-void Channel::enableWriting(bool clear)
+void Channel::enableWriting()
 { 
     ractive_ = true;
-    if (clear) {
-        events_ &= 0;
-    }
     events_ |= EPOLLOUT;
     update();
 }
@@ -41,19 +35,15 @@ void Channel::handleEvent()
             readCallback_();
         } else {
             std::cout << "no read callback." << std::endl;
-            abort();
         }
-    } 
-
-    if (revents_ & ( EPOLLOUT )) {
-        std::cout << "handle write event on: " << fd_ << std::endl;
-        if(writeCallback_)
-        {
-            writeCallback_();
-        } else {
-            std::cout << "no write callback\n";
-            abort();
-        }
+    } else if(revents_ & ( EPOLLOUT )) {
+        std::cout << "write event\n";
+        //std::cout << "handle write event on: " << fd_ << std::endl;
+        //if(writeCallback_)
+        //{
+        //    writeCallback_();
+        //}
+    } else {
+        std::cout << "unknow event: " << revents_ << std::endl;
     }
-
 }

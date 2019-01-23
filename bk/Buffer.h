@@ -1,11 +1,9 @@
 #ifndef BUFFER_H
 #define BUFFER_H
-#include <cerrno>
-#include <unistd.h>
-#include <iostream>
-#include <sys/uio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <iostream>
+#include <cerrno>
 
 class Buffer
 {
@@ -25,17 +23,9 @@ public:
     u_char* Last() const { return last_; }
     u_char* Pos() const { return pos_; }
 
-    size_t  Size() const { return last_ - start_; }
-
     void SetPos(u_char* pos) { pos_ = pos; }
-    void SetLast(u_char* last) { last_ = last; }
-    void Reset() {
-        pos_ = start_;
-        last_ = start_;
-    }
 
     ssize_t ReadFd(int fd, size_t size);
-    ssize_t Write(int fd);
 
 private:
     u_char* buf_;

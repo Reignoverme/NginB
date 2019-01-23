@@ -14,26 +14,16 @@ void Epoller::updateChannel(Channel* c)
      * unspecified values.
      */
     struct epoll_event ev;
-    uint32_t method;
     bzero(&ev, sizeof ev);
 
-    if (channels_[c->fd()]) {
-        Channel* ec = channels_[c->fd()];
-        ev.events |= ec->events();
-        method = EPOLL_CTL_MOD;
-    } else {
-        method = EPOLL_CTL_ADD;
-        channels_[c->fd()] = c;
-    }
     ev.data.fd = c->fd();
     ev.events |= c->events();
-    int err = epoll_ctl(epfd_, method, c->fd(), &ev);
-    std::cout << "epoll: fd " << c->fd() << " events: "
-        << std::hex << ev.events << std::dec << std::endl;
+    int err = epoll_ctl(epfd_, EPOLL_CTL_ADD, c->fd(), &ev);
     if(err < 0)
     {
         std::cout << "epoll_ctl: " << strerror(errno) << std::endl;
     }
+    channels_[c->fd()] = c;
 }
 
 void Epoller::disableChannel(Channel* ch)

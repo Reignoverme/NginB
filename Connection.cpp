@@ -21,7 +21,8 @@ Connection::Connection(EventLoop* loop,
      peerAddr_(peerAddr),
      channel_(new Channel(fd_, loop)),
      buf_(new Buffer(1024)),
-     active_(true)
+     active_(true),
+     closed_(false)
 {
     //channel_->setReadCallback(
     //    boost::bind(&Connection::handleRead, this));
@@ -43,16 +44,22 @@ void Connection::ConnEstablished(bool er, bool ew)
 
 void Connection::CloseConnection()
 {
+    closed_ = true;
+
     channel_->disableEvent();
     active_ = false;
+    std::cout << "closing " << fd_ << std::endl;
     ::close(fd_);
     if (acpt_) {
+    //    std::cout << "closing acpt connection" << fd_ << std::endl;
         acpt_->CloseConnection(this);
     }
 
     if (cnct_) {
+     //   std::cout << "closing cnct connection" << fd_ << std::endl;
         cnct_->CloseConnection(this);
     }
+
 }
 
 int Connection::GetRequest()
@@ -97,7 +104,7 @@ int Connection::handleHeaders()
 
     ssize_t n = buf_->ReadFd(fd_, buf_->End() - buf_->Last()); 
 
-    rc = ProcessRequestHeaders(buf_, request_);
+    rc = ProcessRequestHeaders<RequestPtr>(buf_, request_);
    
     if (rc == OK)
     {
@@ -106,13 +113,13 @@ int Connection::handleHeaders()
             << "uri: " << request_->Uri() << std::endl
             << "HTTP version: " << request_->HTTPVersion() << std::endl;
 
-        std::cout << "----- request headers -----\n";
-        for(std::unordered_map<std::string, std::string>::const_iterator
-                it = request_->Headers().begin();
-                it != request_->Headers().end();
-                it++) {
-            std::cout << it->first << ": " << it->second << std::endl;
-        }       
+        //std::cout << "----- request headers -----\n";
+        //for(std::unordered_map<std::string, std::string>::const_iterator
+        //        it = request_->Headers().begin();
+        //        it != request_->Headers().end();
+        //        it++) {
+        //    std::cout << it->first << ": " << it->second << std::endl;
+        //}       
 
         std::cout << "----- processing request -----\n";
         ProcessRequest(request_, response_);
@@ -174,7 +181,8 @@ int Connection::handleRead()
         std::cout << "Bad request.\n";
         //TODO send 4xx response.
         buf_->Reset();
-        ::send(fd_, "400 Bad Request\r\n", sizeof("400 Bad Request\r\n"), 0);
+        ::send(fd_, "HTTP/1.1 400 Bad Request\r\n\r\n",
+                sizeof("HTTP/1.1 400 Bad Request\r\n\r\n")-1, 0);
         return -1;
     }
     return ERROR;

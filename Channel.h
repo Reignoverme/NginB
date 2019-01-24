@@ -25,7 +25,7 @@ public:
     void setReadCallback(const EventCallback& cb)
     {   
         if (cb) {
-            std::cout << "binding read cb on " << fd_ << std::endl;
+//            std::cout << "binding read cb on " << fd_ << std::endl;
             readCallback_ = cb;
         } else {
             std::cout << "read cb error!\n";
@@ -34,7 +34,7 @@ public:
     void setWriteCallback(const EventCallback& cb)
     {
         if (cb) {
-            std::cout << "binding write cb on " << fd_ << std::endl;
+ //           std::cout << "binding write cb on " << fd_ << std::endl;
             writeCallback_ = cb;
         } else {
             std::cout << "write cb error!\n";

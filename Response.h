@@ -21,22 +21,28 @@ public:
 
     Response(ConnectionPt c):
         connection_(c),
-        serverName_("NginB/0.0.1")
+        state_(0),
+        serverName_("NginB/0.0.1"),
+        set_(false)
     {}
 
     void SetStatusLine(const u_char*, const u_char*);
-    void SetHeaders (const u_char*, const u_char*, const u_char*, const u_char*);
 
-    void SetHeaders(const std::string& field,
-            const std::string& value)       { headers_[field] = value; }
+    void Set()                              { set_ = true; }
     void SetFd(const int fd)                { fd_ = fd; }
     void SetState(uint8_t state)            { state_ = state; }
-    void SetStatus (const uint32_t status)  { status_ = status; }
+    void SetStatusCode (const uint32_t status)  { statusCode_ = status; }
     void SetHTTPVersion(uint32_t version)   { httpVersion_ = version; }
+    void SetHeaders(const std::string& field,
+            const std::string& value)       { headers_[field] = value; }
+    void SetHeaders (const u_char*, const u_char*, const u_char*, const u_char*);
 
-    uint32_t& Status()                      { return status_; }
+    int fd() const                          { return fd_; }
+    bool IsSet() const                      { return set_; }
+    uint32_t& StatusCode()                  { return statusCode_; }
+    uint32_t  HTTPVersion()                 { return httpVersion_; }
     uint32_t  State() const                 { return state_; }
-    const int fd() const                    { return fd_; }
+    std::string StatusLine()                { return statusLine_; }
     const Header& Headers() const           { return headers_; }
     ConnectionPt GetConnection() const      { return connection_.lock(); }
     const std::string& ServerName() const   { return serverName_; }
@@ -46,12 +52,14 @@ private:
     boost::weak_ptr<Connection> connection_;
 
     int fd_;
-    uint32_t status_;
+    uint32_t statusCode_;
     uint8_t state_;
     std::string statusLine_;
     uint32_t httpVersion_;
     std::string serverName_;
     Header headers_;
+
+    bool set_;
 };
 
 #endif

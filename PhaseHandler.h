@@ -28,7 +28,6 @@ public:
     virtual ~PhaseHandler() {};
     virtual int Handle(Request&, Response&) = 0;
 
-    void FinalizeRequest(const Request&, const Response&);
     int SendHeaders(Request&, Response&);
     int SendBody(Request&, Response&, size_t);
     EventLoop* GetEventLoop() const { return loop_; }

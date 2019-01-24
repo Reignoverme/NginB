@@ -28,8 +28,8 @@ void Epoller::updateChannel(Channel* c)
     ev.data.fd = c->fd();
     ev.events |= c->events();
     int err = epoll_ctl(epfd_, method, c->fd(), &ev);
-    std::cout << "epoll: fd " << c->fd() << " events: "
-        << std::hex << ev.events << std::dec << std::endl;
+    //std::cout << "epoll: fd " << c->fd() << " events: "
+    //    << std::hex << ev.events << std::dec << std::endl;
     if(err < 0)
     {
         std::cout << "epoll_ctl: " << strerror(errno) << std::endl;

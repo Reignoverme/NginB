@@ -12,13 +12,17 @@
 
 class Buffer;
 class Request;
+class Response;
 
 int ProcessRequestLine(const boost::scoped_ptr<Buffer>&,
         const boost::shared_ptr<Request>&);
+
+template <class T>
 int ProcessRequestHeaders(const boost::scoped_ptr<Buffer>&,
-        const boost::shared_ptr<Request>&);
+        const T&);
+
 int ParseStatusLine(const boost::scoped_ptr<Buffer>&,
-        const boost::shared_ptr<Request>&);
+        const boost::shared_ptr<Response>&);
 
 ssize_t httpReadRequestHeader(const Buffer&);
 

@@ -19,6 +19,7 @@ class UpstreamHandler : public PhaseHandler
 {
 public:
     typedef boost::shared_ptr<Request> RequestPtr;
+    typedef boost::shared_ptr<Response> ResponsePtr;
     typedef std::unordered_map<std::string, std::string> Headers;
     typedef std::unordered_map<int,
             boost::shared_ptr<Connection>> Connections; 
@@ -35,6 +36,7 @@ public:
         upstreamPort_(up)
     {}
 
+    //~UpstreamHandler() { upstreamConnections_.clear(); }
 
     /* 
      * Create request,
@@ -58,6 +60,7 @@ public:
 
 private:
     RequestPtr                  request_;
+    ResponsePtr                 response_;
     std::string                 location_;
     std::string                 upstreamServer_;
     unsigned short              upstreamPort_;

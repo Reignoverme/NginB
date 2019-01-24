@@ -1,5 +1,6 @@
 #include "Request.h"
 #include "UpstreamHandler.h"
+#include "HTTPRequestHandler.h"
 
 int UpstreamHandler::Handle(Request& req, Response& res)
 {
@@ -60,17 +61,19 @@ int UpstreamHandler::CreateRequest()
 
     buf_->SetLast(cpystr(buf_, "\r\n", sizeof("\r\n") - 1));
 
-    u_char* b = buf_->Start();
-    std::cout << "create request:\n";
-    for (; b != buf_->Last(); b++) {
-        std::cout << *b;
-    }
+    //u_char* b = buf_->Start();
+    //std::cout << "------ header send to server ------\n";
+    //for (; b != buf_->Last(); b++) {
+    //    std::cout << *b;
+    //}
+    //std::cout << "-----------------------------------\n";
+
+    return OK;
 }
 
 int UpstreamHandler::Connect()
 {
     int                             rc, sockfd;
-    uint32_t                        event;
     struct sockaddr_in              uaddr;
     boost::shared_ptr<Connection>   c;
 
@@ -103,10 +106,14 @@ int UpstreamHandler::Connect()
     c->SetReadCallback(
             boost::bind(&UpstreamHandler::UpstreamProcessHeader, this, c.get()));
 
-    upstreamConnections_[sockfd] = c;
     c->GetRequest(); 
     c->ConnEstablished(false, true);    // enable EPOLLOUT.
+    upstreamConnections_[sockfd] = c;
 
+    response_ = boost::make_shared<Response>(c);
+
+    std::cout << sockfd << " <------------>"
+        << request_->GetConnection()->fd() << std::endl;
     rc = connect(sockfd, (struct sockaddr*)&uaddr, sizeof(uaddr));
 
     if (rc == -1) {
@@ -126,6 +133,8 @@ int UpstreamHandler::Connect()
 
         UpstreamSendRequest(c.get());
     }
+
+    return OK;
 }
 
 int UpstreamHandler::UpstreamSendRequest(Connection* c)
@@ -168,7 +177,7 @@ int UpstreamHandler::UpstreamSendRequest(Connection* c)
 
 int UpstreamHandler::UpstreamProcessHeader(Connection* c)
 {
-    uint32_t rc;
+    int32_t rc;
 
     std::cout << "reading response from upstream\n";
 
@@ -182,6 +191,13 @@ int UpstreamHandler::UpstreamProcessHeader(Connection* c)
     
     ssize_t n = out_->ReadFd(c->fd(), out_->End() - out_->Start());
 
+    //std::cout << "------ upstream response ------\n";
+    //u_char* a = out_->Start();
+    //for( ;a != out_->Last(); a++ ) {
+    //    std::cout << *a;
+    //}
+    //std::cout << "-------------------------------\n";
+
     if (n == AGAIN) {
         return AGAIN;
     } 
@@ -192,12 +208,39 @@ int UpstreamHandler::UpstreamProcessHeader(Connection* c)
         return OK;
     }
 
-    std::cout << "recv: \n";
-    u_char* a = out_->Pos();
-    for( ; a != out_->Last(); a++ ) {
-        std::cout << *a;
-    }
+    if (response_->IsSet()) {
+        // send body
+        //
+        boost::shared_ptr<Connection> c = request_->GetConnection();
+        if (c.get()) {
+            n = out_->Write(request_->GetConnection()->fd());
+            std::cout << request_->GetConnection()->fd()<< " write " << n << " bytes\n";
+        } else {
+            //TODO destruct reqeust object.
+            std::cout << "request closed\n";
+        }
 
+    } else {
+        rc = ParseStatusLine(out_, response_);
+        if (rc == AGAIN) {
+            return rc;
+        }
+
+        if (rc == ERROR) {
+            std::cout << "upstream server sent invalid header\n";
+            return ERROR;
+        }
+
+        rc = ProcessRequestHeaders<ResponsePtr>(out_, response_);
+
+        if (rc == OK) {
+            response_->Set();
+            std::cout << "sending headers to client\n";
+
+            PhaseHandler::SendHeaders(*request_, *response_);
+        }
+    }
+    
     return OK;
 }
 

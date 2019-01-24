@@ -14,12 +14,12 @@ ssize_t Buffer::ReadFd(int fd, size_t size)
 
     if(n < 0){
         if (errno == EAGAIN || errno == EINTR) {
-            std::cout << "recv(2) not ready\n";
+            std::cout << fd << " recv(2) not ready\n";
             return AGAIN;
         }
         return ERROR;
     } else {
-        std::cout << "buffer read " << n << " bytes.\n";
+        std::cout << fd << " buffer read " << n << " bytes.\n";
         last_ += n;
         return n;
     }

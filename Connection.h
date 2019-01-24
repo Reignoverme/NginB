@@ -14,10 +14,9 @@
 #include <boost/enable_shared_from_this.hpp>
 
 #include "Channel.h"
+#include "Buffer.h"
 
-class Channel;
 class EventLoop;
-class Buffer;
 class Acceptor;
 class Request;
 class Response;
@@ -27,6 +26,8 @@ class Connection : boost::noncopyable,
     public boost::enable_shared_from_this<Connection>
 {
 public:
+    typedef boost::shared_ptr<Request>  RequestPtr;
+    typedef boost::shared_ptr<Response> ResponsePtr; 
     typedef boost::function<int()> Callback;
 
     Connection(EventLoop* loop,
@@ -35,6 +36,12 @@ public:
                int fd,
                int peerPort,
                boost::asio::ip::address peerAddr);
+
+    ~Connection() {
+        if (!closed_) {
+            CloseConnection();
+        }
+    }
 
     void EnableReading(bool clear) { channel_->enableReading(clear); }
     void EnableWriting(bool clear) { channel_->enableWriting(clear); }
@@ -51,7 +58,8 @@ public:
 
     void SetReadCallback(const Callback& cb) { channel_->setReadCallback(cb); }
     void SetWriteCallback(const Callback& cb) { channel_->setWriteCallback(cb); }
-    const int fd() const { return fd_; }
+    int fd() const { return fd_; }
+    bool& closed() { return closed_; }
 
 private:
     EventLoop* loop_;
@@ -64,10 +72,11 @@ private:
     boost::scoped_ptr<Channel> channel_;
     boost::scoped_ptr<Buffer> buf_;
 
-    boost::shared_ptr<Request> request_;
-    boost::shared_ptr<Response> response_;
+    RequestPtr request_;
+    ResponsePtr response_;
 
     bool active_;
+    bool closed_;
 
     int handleRead();
     void handleWrite();

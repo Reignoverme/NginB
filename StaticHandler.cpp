@@ -49,12 +49,12 @@ int StaticHandler::Handle(Request& req, Response& res)
             std::cout << "error: "
                 << strerror(errno) << std::endl;
 
-            res.SetStatus(HTTP_NOT_FOUND);
+            res.SetStatusCode(HTTP_NOT_FOUND);
             fd = OpenFile(HTTP_404_PAGE, sb, O_RDONLY, 0);
 
         } else {
             std::cout << "open file: " << path << std::endl;
-            res.SetStatus(HTTP_OK);
+            res.SetStatusCode(HTTP_OK);
         }
         res.SetFd(fd);
         res.SetHeaders("Content-length", std::to_string(sb.st_size));

@@ -46,24 +46,26 @@ public:
      * send back to client.
      *
      */
-    virtual int Handle(Request&, Response&);
+    virtual int Handle(Connection::RequestPtr&,
+            Connection::ResponsePtr&);
 
     // Connect to upstream server
     int Connect();
     // Create request to upstream server
     int CreateRequest();
 
-    int UpstreamSendRequest(Connection*);
-    int UpstreamProcessHeader(Connection*);
+    int UpstreamSendRequest(Response::ConnectionPtr&);
+    int UpstreamProcessHeader(Response::ConnectionPtr&);
 
     void CloseConnection(Connection* c) { UpstreamCloseConnection(c); }
 
 private:
-    RequestPtr                  request_;
-    ResponsePtr                 response_;
+    RequestPtr                  request_;    // request from client
+    ResponsePtr                 response_;   // response from upstream server
     std::string                 location_;
     std::string                 upstreamServer_;
     unsigned short              upstreamPort_;
+    Response::Chain             in_;
     boost::scoped_ptr<Buffer>   buf_;
     boost::scoped_ptr<Buffer>   out_;
 
@@ -71,7 +73,9 @@ private:
     uint32_t    upstreamStatus_;
     Connections upstreamConnections_;
 
-    int  UpstreamTestConnection(Connection*);
+    int  ReadClientBody(const RequestPtr&, int, bool);
+    int  ReadRestOfBody(const RequestPtr&, int, bool);
+    int  UpstreamTestConnection(Response::ConnectionPtr&);
     void UpstreamCloseConnection(Connection* c) 
     { upstreamConnections_.erase(c->fd()); }
 };

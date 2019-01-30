@@ -33,12 +33,16 @@ void Channel::enableWriting(bool clear)
 
 void Channel::handleEvent()
 {
+    int rc;
+
     if(revents_ & (EPOLLIN|EPOLLRDHUP))
     {
-        std::cout << "handle read event on: " << fd_ << std::endl;
+        std::cout << "****** ";
+        std::cout << "handle read event on: " << fd_ ;
+        std::cout << " ******\n";
         if(readCallback_)
         {
-            readCallback_();
+            rc = readCallback_();
         } else {
             std::cout << "no read callback." << std::endl;
             abort();
@@ -46,7 +50,9 @@ void Channel::handleEvent()
     } 
 
     if (revents_ & ( EPOLLOUT )) {
+        std::cout << "****** ";
         std::cout << "handle write event on: " << fd_ << std::endl;
+        std::cout << " ******\n";
         if(writeCallback_)
         {
             writeCallback_();

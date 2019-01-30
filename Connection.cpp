@@ -79,30 +79,44 @@ int Connection::GetRequest()
     return 1;
 }
 
-void Connection::ProcessRequest(const boost::shared_ptr<Request>& req,
-                            const boost::shared_ptr<Response>& res)
+int Connection::ProcessRequest(RequestPtr& req, ResponsePtr& res)
 {
-    /* TODO
-     * check uri, dispatch this request to
-     * StaticHandler or
-     * UpstreamHandler
-     */
+    int rc;
 
-    //StaticHandler sh(loop_);
-    //sh.Handle(*req, *res); 
-    //
+    if (req->Uri().compare(0, 7, "/static") == 0) {
+        StaticHandler sh(loop_);
+        rc = sh.Handle(req, res); 
+    } else {
+        // TODO manage life time of Upstream objects.
+        UpstreamHandler *up = new UpstreamHandler(loop_, req, "/", "127.0.0.1", 8000);
+        rc = up->Handle(req, res);
+    }
 
-
-    UpstreamHandler *up = new UpstreamHandler(loop_, req, "/", "127.0.0.1", 8000);
-
-    up->Handle(*req, *res);
+    return rc;
 }
 
 int Connection::handleHeaders()
 {
     int rc;
 
+    //u_char* a = buf_->Last();
+
     ssize_t n = buf_->ReadFd(fd_, buf_->End() - buf_->Last()); 
+
+    if (n < 0) {
+       return n;      
+    }
+
+    if (n == 0) {
+        std::cout << "handleheaders: connection closed\n";
+        CloseConnection();
+        return OK;
+    }
+
+    //std::cout << "****** handle headers recved: ******\n";
+    //for ( ; a!=buf_->Last(); a++ ) {
+    //    std::cout << *a;
+    //}
 
     rc = ProcessRequestHeaders<RequestPtr>(buf_, request_);
    
@@ -122,16 +136,19 @@ int Connection::handleHeaders()
         //}       
 
         std::cout << "----- processing request -----\n";
-        ProcessRequest(request_, response_);
+        rc = ProcessRequest(request_, response_);
+        if ( rc == AGAIN || rc == ERROR ) {
+            return rc;
+        }
 
         if (request_->Headers()["Connection"] == "close") {
             std::cout << "closing connection\n";
             CloseConnection();
         }
 
-        buf_->Reset();
-        channel_->setReadCallback(
-                boost::bind(&Connection::handleRead, this));
+        //buf_->Reset();
+        //channel_->setReadCallback(
+        //        boost::bind(&Connection::handleRead, this));
     }
 
     return rc;
@@ -153,15 +170,23 @@ int Connection::handleRead()
 
     if (n < 0) {
         std::cout << "recv error: " << strerror(errno);
-        return -1;
+        CloseConnection();
+        return ERROR;
     }
 
     if (n == 0) {
         std::cout << "peer closed connection\n"; 
         CloseConnection();
-        return 1;
+        return OK;
     }
 
+    //std::cout << "****** recved: ******\n";
+    //u_char* a = buf_->Start();
+    //for ( ; a!=buf_->Last(); a++ ) {
+    //    std::cout << *a;
+    //}
+
+    std::cout << "------ process request line ------\n";
     int rc = ProcessRequestLine(buf_, request_);
 
     if (rc == OK) {

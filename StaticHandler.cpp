@@ -1,14 +1,15 @@
 #include "Connection.h"
 #include "StaticHandler.h"
 
-int StaticHandler::Handle(Request& req, Response& res)
+int StaticHandler::Handle(Connection::RequestPtr& req,
+        Connection::ResponsePtr& res)
 {
     typedef std::list<std::string> strlist;
 
     int fd, rc;
     struct stat sb;
     std::string path;
-    std::string uri = req.Uri();
+    std::string uri = req->Uri();
 
     path = MapUriToPath(uri);
 
@@ -36,8 +37,8 @@ int StaticHandler::Handle(Request& req, Response& res)
                 return HTTP_NOT_FOUND;
             }
 
-            res.SetHeaders("Content-length", std::to_string(sb.st_size));
-            res.SetFd(fd);
+            res->SetHeaders("Content-length", std::to_string(sb.st_size));
+            res->SetFd(fd);
         }
 
     } else {
@@ -49,27 +50,29 @@ int StaticHandler::Handle(Request& req, Response& res)
             std::cout << "error: "
                 << strerror(errno) << std::endl;
 
-            res.SetStatusCode(HTTP_NOT_FOUND);
+            res->SetStatusCode(HTTP_NOT_FOUND);
             fd = OpenFile(HTTP_404_PAGE, sb, O_RDONLY, 0);
 
         } else {
             std::cout << "open file: " << path << std::endl;
-            res.SetStatusCode(HTTP_OK);
+            res->SetStatusCode(HTTP_OK);
         }
-        res.SetFd(fd);
-        res.SetHeaders("Content-length", std::to_string(sb.st_size));
+        res->SetFd(fd);
+        res->SetHeaders("Content-length", std::to_string(sb.st_size));
     }
 
     PhaseHandler::SendHeaders(req, res);
-    ssize_t n = PhaseHandler::SendBody(req, res, sb.st_size);
-    if (n < 0) {
-        return ERROR;
-    }
+    ssize_t n = PhaseHandler::SendBody(res, sb.st_size);
     
-    std::cout << "send " << n << " bytes\n";
-    ::close(fd);
+    if (n == OK) {
+        ::close(fd);
+    }
 
-    return 1;
+    if (n == AGAIN) {
+        std::cout << "send later\n";
+    }
+
+    return n;
 }
 
 /*

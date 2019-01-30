@@ -5,9 +5,21 @@ ssize_t Buffer::ReadFd(int fd, size_t size)
 {
     ssize_t n;
 
+    size = size > (size_t)(end_ - last_) ? (end_ - last_) : size;
+
     if ((last_ - pos_) > 0) {
         std::cout << "buffer remains " << last_ - pos_ << " bytes.\n";
-        return last_ - pos_;
+        //std::cout << "what remains:\n";
+        //u_char *a = pos_;
+        //for (; a < last_; a++) {
+        //    std::cout << *a;
+        //}
+        n = last_ - pos_;
+        return n;
+    }
+
+    if (last_ == end_) {
+        //TODO
     }
 
     n = ::recv(fd, last_, size, 0);
@@ -21,6 +33,7 @@ ssize_t Buffer::ReadFd(int fd, size_t size)
     } else {
         std::cout << fd << " buffer read " << n << " bytes.\n";
         last_ += n;
+        std::cout << fd << " buffer empty: " << end_ - last_ << " bytes.\n";
         return n;
     }
 }

@@ -26,9 +26,9 @@ class Connection : boost::noncopyable,
     public boost::enable_shared_from_this<Connection>
 {
 public:
+    typedef boost::function<int()>      Callback;
     typedef boost::shared_ptr<Request>  RequestPtr;
     typedef boost::shared_ptr<Response> ResponsePtr; 
-    typedef boost::function<int()> Callback;
 
     Connection(EventLoop* loop,
                Acceptor* acpt,
@@ -56,10 +56,21 @@ public:
             boost::bind(&Connection::handleRead, this));
     }
 
+    void CloseConnection();
+
     void SetReadCallback(const Callback& cb) { channel_->setReadCallback(cb); }
     void SetWriteCallback(const Callback& cb) { channel_->setWriteCallback(cb); }
     int fd() const { return fd_; }
     bool& closed() { return closed_; }
+
+    int handleRead();
+    void handleWrite();
+    int handleHeaders();
+    int ProcessRequest(RequestPtr&, ResponsePtr&);
+
+    ResponsePtr& response() { return response_; }
+    RequestPtr&  request()  { return request_; }
+    boost::scoped_ptr<Buffer>& buf() { return buf_; }
 
 private:
     EventLoop* loop_;
@@ -78,12 +89,6 @@ private:
     bool active_;
     bool closed_;
 
-    int handleRead();
-    void handleWrite();
-    int handleHeaders();
-    void CloseConnection();    //this function should be called inside class only
-    void ProcessRequest(const boost::shared_ptr<Request>&,
-                        const boost::shared_ptr<Response>&);
 };
 
 #endif

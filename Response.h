@@ -5,9 +5,14 @@
 #define HTTP_NOT_FOUND             404
 #define HTTP_INTERNAL_SERVER_ERROR 500 
 
+#include <vector>
+#include <sys/uio.h>
 #include <unordered_map>
 #include <boost/weak_ptr.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
+
+#include "Buffer.h"
 
 extern std::unordered_map<std::string, std::string> types;
 
@@ -16,10 +21,13 @@ class Connection;
 class Response
 {
 public:
+    typedef std::vector<Buffer> Chain;
+    typedef std::vector<struct iovec>  Iovec;
+    typedef boost::shared_ptr<Connection> ConnectionPtr;
     typedef std::unordered_map<std::string, std::string> Header;
-    typedef boost::shared_ptr<Connection> ConnectionPt;
 
-    Response(ConnectionPt c):
+
+    Response(ConnectionPtr c):
         connection_(c),
         state_(0),
         serverName_("NginB/0.0.1"),
@@ -39,12 +47,13 @@ public:
 
     int fd() const                          { return fd_; }
     bool IsSet() const                      { return set_; }
+    Chain& out()                            { return out_; }
     uint32_t& StatusCode()                  { return statusCode_; }
     uint32_t  HTTPVersion()                 { return httpVersion_; }
     uint32_t  State() const                 { return state_; }
     std::string StatusLine()                { return statusLine_; }
-    const Header& Headers() const           { return headers_; }
-    ConnectionPt GetConnection() const      { return connection_.lock(); }
+    Header& Headers()                       { return headers_; }
+    ConnectionPtr GetConnection() const     { return connection_.lock(); }
     const std::string& ServerName() const   { return serverName_; }
 
 
@@ -60,6 +69,8 @@ private:
     Header headers_;
 
     bool set_;
+
+    Chain out_;
 };
 
 #endif

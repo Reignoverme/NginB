@@ -25,7 +25,8 @@ public:
         indexes_({"index.html"})
     {}
 
-    virtual int Handle(Request&, Response&);
+    virtual int Handle(Connection::RequestPtr&,
+            Connection::ResponsePtr&);
 
 private:
     //TODO put this in config file.

@@ -62,7 +62,7 @@ public:
     { writecallback_ = cb; }
 #endif
 
-    const ConnectionPt GetConnection() const { return connection_.lock(); }
+    ConnectionPt GetConnection() const { return connection_.lock(); }
 
 private:
     boost::weak_ptr<Connection> connection_;
@@ -75,6 +75,8 @@ private:
     std::string ext_;
     Header headers_;
     uint32_t phase_;
+
+    void toLower(std::basic_string<char>&);
 };
 
 #endif

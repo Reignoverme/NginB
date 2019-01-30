@@ -2,6 +2,7 @@
 #define BUFFER_H
 #include <cerrno>
 #include <unistd.h>
+#include <string.h>
 #include <iostream>
 #include <sys/uio.h>
 #include <sys/types.h>
@@ -17,6 +18,17 @@ public:
           last_(buf_),
           pos_(buf_)
     {}
+
+    Buffer(const Buffer& rhl) {
+        size_t size = rhl.End() - rhl.Start();
+        buf_ = new u_char[size];
+        start_ = buf_;
+        end_  = buf_ + size;
+        last_ = buf_ + (rhl.Last() - rhl.Start());
+        pos_ = buf_ + (rhl.Pos() - rhl.Start());
+
+        memcpy(start_, rhl.Start(), size);
+    }
 
     ~Buffer(){ delete [] buf_; }
 

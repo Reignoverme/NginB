@@ -1,5 +1,14 @@
 #include "Request.h"
 
+void Request::toLower(std::basic_string<char>& s)
+{
+   for (std::basic_string<char>::iterator p = s.begin();
+        p != s.end();
+        ++p) {
+        *p = std::tolower(*p);
+       }
+}
+
 void Request::SetField(const u_char* start, const u_char* end, uint8_t field)
 {
     size_t size = end - start;
@@ -25,6 +34,7 @@ void Request::SetHeaders(const u_char* nameStart,
             nameEnd - nameStart);
     std::string value(reinterpret_cast<const char*>(valueStart),
             valueEnd - valueStart);
+    toLower(name); toLower(value);
 
     headers_[name] = value;
 }

@@ -369,6 +369,7 @@ static int ParseRequestLine(const boost::scoped_ptr<Buffer>& header,
         switch (state) {
         case sw_start:
             //std::cout << "sw_start\n";
+            //std::cout << (int)ch;
             m = p;    // m points to the start of request line.
             if (ch == '\n' || ch == '\r') {
                 break;
